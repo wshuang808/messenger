@@ -1,14 +1,17 @@
 # include <stdio.h>
 # include <stdbool.h>
 # include <limits.h>
+# include <stdlib.h>
+# include <string.h>
 
-
-# define NUM_MAX_CITY 10
+# define NUM_MAX_CITY 100
 # define TIME_INF INT_MAX
 # define TIME_IN_SAME_CITY 0
 # define NULL_CITY -1
 # define VISITED 1
 # define UNVISITED 0
+# define MAX_INPUT_WIDTH 4
+# define MAX_INPUT_VALUE 9999
 
 
 bool getDataFromPlayer();
@@ -21,38 +24,62 @@ void updateCityData(unsigned int cityId, unsigned int preCityId);
 void evaluatePath(unsigned int startCity, unsigned int endCity);
 int getSpreadTime(unsigned int city);
 int getTimeOnPath(unsigned int startCity, unsigned int endCity);
+int compareInt(const void* a, const void* b);
 
 
 unsigned int numCity;
 int matrix[NUM_MAX_CITY][NUM_MAX_CITY];
 int minTimes[NUM_MAX_CITY];
-int preCities[NUM_MAX_CITY];  // previous city on the shortest path for each city
+int preCities[NUM_MAX_CITY];  // previous city on shortest path for each city
 
 
 int main(){
     bool dataReceived = getDataFromPlayer();
     if (dataReceived){
         normalizeData();
-        traceInput();
+        //traceInput();
         caculation();
+        qsort(minTimes, numCity, sizeof(int), compareInt);
+        if (minTimes[0] != TIME_INF){
+            printf("Result is %d.\n",minTimes[0]);
+        }
+        else{
+            printf("Invalid input, at least one city can't be reached from capitol.\n");
+        }
     }
 }
 
 
 bool getDataFromPlayer(){
-    bool result = false;
+    bool result;
     printf("Input number of city (1-100):");
     scanf("%d", &numCity);
+    char tempStr[MAX_INPUT_WIDTH + 1];
     if (1 <= numCity && numCity <= NUM_MAX_CITY){
+        printf("Input adjacency matrix (1-%d or x for each element):\n", MAX_INPUT_VALUE);
         for (unsigned int i = 1; i < numCity; ++i){
             for (unsigned int j = 0; j < i; ++j){
-                scanf("%d", &matrix[i][j]);
+                scanf("%4s", tempStr);
+                if (strcmp(tempStr, "x") == 0){
+                    matrix[i][j] = TIME_INF;
+                }
+                else{
+                    int time = atoi(tempStr);
+                    if (time <= 0){
+                        printf("Invalid input '%s'", tempStr);
+                        return false;
+                    }
+                    else{
+                        matrix[i][j] = time;
+                    }
+                }
             }
         }
         result = true;
     }
     else {
-        printf("Invalid city number %d.\n", numCity);
+        printf("Invalid city number '%d'.\n", numCity);
+        result = false;
     }
     return result;
 }
@@ -93,10 +120,6 @@ void caculation(){
     minTimes[0] = 0;
     for (int i = 1; i < numCity; ++i){
         minTimes[i] = getSpreadTime(i);
-    }
-
-    for (int i = 0; i < numCity; ++i){
-        printf("%d ", minTimes[i]);
     }
 } 
 
@@ -148,7 +171,7 @@ void updateCityData(unsigned int cityId, unsigned int preCityId){
     preCities[cityId] = preCityId;
 
     if (oldPreCity != NULL_CITY){
-        evaluatePath(cityId, preCityId);
+        evaluatePath(cityId, oldPreCity);
     }
 }
 
@@ -181,6 +204,7 @@ int getSpreadTime(unsigned int city){
     return spreadTime;
 }
 
+
 int getTimeOnPath(unsigned int startCity, unsigned int endCity){
     int time;
     if (startCity > endCity){
@@ -190,4 +214,14 @@ int getTimeOnPath(unsigned int startCity, unsigned int endCity){
         time = matrix[startCity][endCity];
     }
     return time;
+}
+
+
+int compareInt(const void* a, const void* b){
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+
+    if (arg1 < arg2) return 1;
+    if (arg1 > arg2) return -1;
+    return 0;
 }
