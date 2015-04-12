@@ -16,9 +16,11 @@ void normalizeData();
 void traceInput();
 void caculation();
 void initIntArrayByValue(int* pArray, unsigned int length, int value);
-void traverseCity(unsigned int cityId); 
-void updateCityData(unsigned int cityId, unsigned int preCityId, int minTime);
+void traversePathFromCity(unsigned int cityId); 
+void updateCityData(unsigned int cityId, unsigned int preCityId);
 void evaluatePath(unsigned int startCity, unsigned int endCity);
+int getSpreadTime(unsigned int city);
+int getTimeOnPath(unsigned int startCity, unsigned int endCity);
 
 
 unsigned int numCity;
@@ -32,6 +34,7 @@ int main(){
     if (dataReceived){
         normalizeData();
         traceInput();
+        caculation();
     }
 }
 
@@ -82,15 +85,23 @@ void traceInput(){
 
 
 void caculation(){
-    initIntArrayByValue(minTimes, numCity, TIME_INF);
-    minTimes[0] = TIME_IN_SAME_CITY; // set time for capitol
     initIntArrayByValue(preCities, numCity, NULL_CITY);
 
-    traverseCity(0);
+    traversePathFromCity(0);
+
+    initIntArrayByValue(minTimes, numCity, TIME_INF);
+    minTimes[0] = 0;
+    for (int i = 1; i < numCity; ++i){
+        minTimes[i] = getSpreadTime(i);
+    }
+
+    for (int i = 0; i < numCity; ++i){
+        printf("%d ", minTimes[i]);
+    }
 } 
 
 
-void traverseCity(unsigned int rootCity){
+void traversePathFromCity(unsigned int rootCity){
     unsigned int startCity, endCity;
     startCity = rootCity;
     endCity = startCity + 1;
@@ -100,29 +111,30 @@ void traverseCity(unsigned int rootCity){
         if (matrix[endCity][startCity] == UNVISITED){
             matrix[endCity][startCity] = VISITED; // set path visited
             evaluatePath(startCity, endCity);
-            traverseCity(endCity);
+            traversePathFromCity(endCity);
         }
     }
 }
 
 
 void evaluatePath(unsigned int startCity, unsigned int endCity){
-    int pathTime = matrix[startCity][endCity];
-    int minTime;
+    int pathTime = getTimeOnPath(startCity, endCity);
+    int minTime, startCitySpreadTime, endCitySpreadTime;
     if (pathTime != TIME_INF){
-        if (minTimes[endCity] == TIME_INF){
-            minTime = minTimes[startCity] + pathTime;
-            updateCityData(endCity, startCity, minTime);
+        startCitySpreadTime = getSpreadTime(startCity);
+        endCitySpreadTime = getSpreadTime(endCity);
+        if (endCitySpreadTime == TIME_INF){
+            updateCityData(endCity, startCity);
         }
         else{
-            minTime = minTimes[startCity] + pathTime;
-            if (minTimes[endCity] > minTime){
-                updateCityData(endCity, startCity, minTime);
+            minTime = startCitySpreadTime + pathTime;
+            if (endCitySpreadTime > minTime){
+                updateCityData(endCity, startCity);
             }
             else{
-                minTime= minTimes[endCity] + pathTime;
-               if (minTimes[startCity] > minTime){
-                   updateCityData(startCity, endCity, minTime);
+                minTime= endCitySpreadTime + pathTime;
+               if (startCitySpreadTime > minTime){
+                   updateCityData(startCity, endCity);
                } 
             }
         }
@@ -130,9 +142,9 @@ void evaluatePath(unsigned int startCity, unsigned int endCity){
 }
 
 
-void updateCityData(unsigned int cityId, unsigned int preCityId, int minTime){
+// update path info for target city and previouse city on the path
+void updateCityData(unsigned int cityId, unsigned int preCityId){
     unsigned int oldPreCity = preCities[cityId];
-    minTimes[cityId] = minTime;
     preCities[cityId] = preCityId;
 
     if (oldPreCity != NULL_CITY){
@@ -147,3 +159,35 @@ void initIntArrayByValue(int* pArray, unsigned int length, int value){
     }
 }
 
+
+int getSpreadTime(unsigned int city){
+    int spreadTime = TIME_INF;
+    if (city == 0){
+        spreadTime = 0;
+    }
+    else{
+        unsigned int preCityOnPath = preCities[city];
+        // go through the path and caculate spread time
+        while (preCityOnPath != NULL_CITY){
+            if (spreadTime == TIME_INF){
+                spreadTime = 0;
+            } 
+            
+            spreadTime += getTimeOnPath(preCityOnPath, city);
+            city = preCityOnPath;
+            preCityOnPath = preCities[preCityOnPath];
+        }
+    }
+    return spreadTime;
+}
+
+int getTimeOnPath(unsigned int startCity, unsigned int endCity){
+    int time;
+    if (startCity > endCity){
+        time = matrix[endCity][startCity];
+    }
+    else{
+        time = matrix[startCity][endCity];
+    }
+    return time;
+}
